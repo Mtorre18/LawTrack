@@ -1,17 +1,17 @@
 document.addEventListener('DOMContentLoaded', function() {
-
     const fromDate = new Date();
     fromDate.setDate(fromDate.getDate() - 7);
     const toDate = new Date();
 
-    let offset = 0;
+    let skip = 0;
     const limit = 5;
 
     function formatDate(date) {
         return date.toISOString();
     }
     async function fetchBills() {
-        const response = await fetch(`/api/bills?fromDateTime=${formatDate(fromDate)}&toDateTime=${formatDate(toDate)}&limit=${limit}&offset=${offset}`);
+
+        const response = await fetch(`/api/bills?fromDateTime=${formatDate(fromDate)}&toDateTime=${formatDate(toDate)}&limit=${limit}&offset=${skip}`);
         if (!response.ok) {
             throw new Error('Network response was not ok');
         }
@@ -20,19 +20,19 @@ document.addEventListener('DOMContentLoaded', function() {
     
 
         const billsContainer = document.getElementById('bills-list');
-        for (const bill of data.summaries) {
+        for (const bill of data) {
 
-            const summary = await summarizeBill(bill.text);
+            //const summary = await summarizeBill(bill.text);
             const billElement = document.createElement('div');
             billElement.classList.add('bill-item');
-            const buttonId = `view-details-${bill.bill.number}`;
-            const cosponsorContainerId = `cosponsors-${bill.bill.number}`;
+            const buttonId = `view-details-${bill.number}`;
+            const cosponsorContainerId = `cosponsors-${bill.number}`;
             
 
             billElement.innerHTML = `
-                <h2>${bill.bill.title}</h2>
-                <p>Introduced Date: ${bill.actionDate}</p>
-                <p>${summary}</p>
+                <h2>${bill.title}</h2>
+                <p>Introduced Date: ${bill.updateDate}</p>
+                <p>${bill.summary}</p>
                 <button id="${buttonId}" class="view-details-button">View Sponsors</button>
                 <div id="${cosponsorContainerId}" class="cosponsor-container"></div>
             `;
@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     buttonElement.classList.remove('active');
                     buttonElement.textContent = 'View Sponsors';
                 } else {
-                    showBillDetails(bill.bill.congress, bill.bill.type, bill.bill.number);
+                    showBillDetails(bill.congress, bill.type, bill.number);
                     buttonElement.classList.add('active');
                     buttonElement.textContent = 'Hide Sponsors';
                 }
@@ -53,7 +53,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         }
 
-        offset+=limit;
+        skip+=limit;
     }
 
 

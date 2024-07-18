@@ -4,7 +4,7 @@ const path = require('path');
 const app = express();
 require('dotenv').config();
 const mongoose = require('mongoose');
-
+const Bill = require('./models/Bill');
 const PORT = process.env.PORT || 3000;
 const hf_API_KEY = process.env.hf_API_KEY;
 const c_API_KEY = process.env.c_API_KEY;
@@ -22,22 +22,25 @@ mongoose.connect(dbURI, { useNewUrlParser: true, useUnifiedTopology: true })
 
 // Route to fetch bills from Congress.gov API
 app.get('/api/bills', async (req, res) => {
-    const { fromDate, toDate, limit = 5, offset = 0 } = req.query;
+
     try {
-        const response = await axios.get(`https://api.congress.gov/v3/summaries`, {
-            params: {
-                fromDateTime: fromDate,
-                toDateTime: toDate,
-                limit,
-                offset,
-                api_key: c_API_KEY
-            }
-        });
-        res.json(response.data);
-    } catch (error) {
-        console.error('Error fetching bills:', error.response ? error.response.data : error.message);
-        res.status(500).send('Server Error');
-    }
+        const sampleBill = await Bill.findOne({});
+    console.log('Sample Bill:', sampleBill);
+    
+        const { fromDateTime, toDateTime, limit = 5, skip = 0 } = req.query;
+   
+        const bills = await Bill.find({
+          /*updatedAt: {
+            $gte: new Date(parseInt(fromDateTime)),
+            $lte: new Date(parseInt(toDateTime))
+          }*/
+        }).limit(parseInt(limit)).skip(parseInt(skip));
+    
+        res.json(bills);
+      } catch (error) {
+        console.error('Error fetching bills:', error);
+        res.status(500).json({ message: 'Server error', error: error.message });
+      }
 });
 
 // Route to summarize bill using Hugging Face API

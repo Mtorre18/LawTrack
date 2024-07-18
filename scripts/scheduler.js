@@ -4,6 +4,8 @@ const mongoose = require('mongoose');
 const axios = require('axios');
 const Bill = require('../models/Bill'); 
 const dbURI=process.env.MONGO_URI;
+const hf_API_KEY = process.env.hf_API_KEY;
+const c_API_KEY = process.env.c_API_KEY;
 
 mongoose.connect(dbURI, { useNewUrlParser: true, useUnifiedTopology: true })
   .then(() => console.log('MongoDB connected'))
@@ -20,20 +22,28 @@ async function fetchAndUpdateBills() {
         const fromDate = new Date();
         fromDate.setDate(fromDate.getDate() - 7);
 
-        const response = await axios.get(`https://api.congress.gov/v3/bill?fromDateTime=${formatDate(fromDate)}&toDateTime=${formatDate(toDate)}&api_key=${process.env.c_API_KEY}`);
+        const response = await axios.get(`https://api.congress.gov/v3/summaries?fromDateTime=${formatDate(fromDate)}&toDateTime=${formatDate(toDate)}&api_key=${process.env.c_API_KEY}`);
         const data = response.data;
 
-        for (let bill of data.bills) {
-            const subjectsResponse = await axios.get(`https://api.congress.gov/v3/bill/${bill.congress}/${bill.type.toLowerCase()}/${bill.number}/subjects?api_key=${process.env.c_API_KEY}`);
+        for (let bill of data.summaries) {
+            //console.log(bill);
+            //console.log(`https://api.congress.gov/v3/bill/${bill.bill.congress}/${bill.bill.type.toLowerCase()}/${bill.bill.number}/subjects?api_key=${process.env.c_API_KEY}`);
+            const subjectsResponse = await axios.get(`https://api.congress.gov/v3/bill/${bill.bill.congress}/${bill.bill.type.toLowerCase()}/${bill.bill.number}/subjects?api_key=${process.env.c_API_KEY}`);
             const subjects = subjectsResponse.data.subjects.legislativeSubjects.map(subject => subject.name);
 
+            const sum_response = await axios.post('https://api-inference.huggingface.co/models/mrm8488/bert-small2bert-small-finetuned-cnn_daily_mail-summarization',
+                { inputs: bill.text },{ headers: { Authorization: `Bearer ${hf_API_KEY}` },});
+
+            const summary=sum_response.data[0].summary_text;
+
             await Bill.updateOne(
-                { number: bill.number},
+                { number: bill.bill.number},
                 {
-                    title: bill.title,
-                    congress:bill.congress,
+                    title: bill.bill.title,
+                    congress:bill.bill.congress,
+                    type:bill.bill.type,
                     updateDate: new Date(bill.updateDate),
-                    summary: bill.summary,
+                    summary: summary,
                     subjects
                 },
                 { upsert: true }
